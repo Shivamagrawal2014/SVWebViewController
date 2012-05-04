@@ -237,6 +237,35 @@
 			};
 			name = AppStore;
 		};
+		B18CA0C4154A49BB0070A014 /* Ad-Hoc */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				COPY_PHASE_STRIP = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 5.0;
+				SDKROOT = iphoneos;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = "Ad-Hoc";
+		};
+		B18CA0C5154A49BB0070A014 /* Ad-Hoc */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				DSTROOT = /tmp/SVWebViewController.dst;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "SVWebViewController/SVWebViewController-Prefix.pch";
+				OTHER_LDFLAGS = "-ObjC";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = "Ad-Hoc";
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -245,6 +274,7 @@
 			buildConfigurations = (
 				B114775C1468E1C900953CC0 /* Debug */,
 				B114775D1468E1C900953CC0 /* Release */,
+				B18CA0C4154A49BB0070A014 /* Ad-Hoc */,
 				B138D8DE153807C300D1BCCA /* AppStore */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -255,6 +285,7 @@
 			buildConfigurations = (
 				B114775F1468E1C900953CC0 /* Debug */,
 				B11477601468E1C900953CC0 /* Release */,
+				B18CA0C5154A49BB0070A014 /* Ad-Hoc */,
 				B138D8DF153807C300D1BCCA /* AppStore */,
 			);
 			defaultConfigurationIsVisible = 0;
