@@ -8,20 +8,21 @@
 
 #import "SVWebViewController.h"
 
-@interface SVWebViewController ()
+@interface SVWebViewController () <UIWebViewDelegate, UIActionSheetDelegate, MFMailComposeViewControllerDelegate>
 
-@property (nonatomic, retain, readonly) UIBarButtonItem *backBarButtonItem;
-@property (nonatomic, retain, readonly) UIBarButtonItem *forwardBarButtonItem;
-@property (nonatomic, retain, readonly) UIBarButtonItem *refreshBarButtonItem;
-@property (nonatomic, retain, readonly) UIBarButtonItem *stopBarButtonItem;
-@property (nonatomic, retain, readonly) UIBarButtonItem *actionBarButtonItem;
-@property (nonatomic, retain, readonly) UIActionSheet *pageActionSheet;
+@property (nonatomic, strong, readonly) UIBarButtonItem *backBarButtonItem;
+@property (nonatomic, strong, readonly) UIBarButtonItem *forwardBarButtonItem;
+@property (nonatomic, strong, readonly) UIBarButtonItem *refreshBarButtonItem;
+@property (nonatomic, strong, readonly) UIBarButtonItem *stopBarButtonItem;
+@property (nonatomic, strong, readonly) UIBarButtonItem *actionBarButtonItem;
+@property (nonatomic, strong, readonly) UIActionSheet *pageActionSheet;
 
-@property (nonatomic, retain, readonly) UIWebView *mainWebView;
-@property (nonatomic, retain) NSURL *URL;
+@property (nonatomic, strong) UIWebView *mainWebView;
+@property (nonatomic, strong) NSURL *URL;
 
 - (id)initWithAddress:(NSString*)urlString;
 - (id)initWithURL:(NSURL*)URL;
+- (void)loadURL:(NSURL*)URL;
 
 - (void)updateToolbarItems;
 
@@ -99,15 +100,18 @@
                         otherButtonTitles:nil]; 
 
         if((self.availableActions & SVWebViewControllerAvailableActionsCopyLink) == SVWebViewControllerAvailableActionsCopyLink)
-            [pageActionSheet addButtonWithTitle:NSLocalizedString(@"Copy Link", @"")];
+            [pageActionSheet addButtonWithTitle:NSLocalizedStringFromTable(@"Copy Link", @"SVWebViewController", @"")];
         
         if((self.availableActions & SVWebViewControllerAvailableActionsOpenInSafari) == SVWebViewControllerAvailableActionsOpenInSafari)
-            [pageActionSheet addButtonWithTitle:NSLocalizedString(@"Open in Safari", @"")];
+            [pageActionSheet addButtonWithTitle:NSLocalizedStringFromTable(@"Open in Safari", @"SVWebViewController", @"")];
+        
+        if([[UIApplication sharedApplication] canOpenURL:[NSURL URLWithString:@"googlechrome://"]] && (self.availableActions & SVWebViewControllerAvailableActionsOpenInChrome) == SVWebViewControllerAvailableActionsOpenInChrome)
+            [pageActionSheet addButtonWithTitle:NSLocalizedStringFromTable(@"Open in Chrome", @"SVWebViewController", @"")];
         
         if([MFMailComposeViewController canSendMail] && (self.availableActions & SVWebViewControllerAvailableActionsMailLink) == SVWebViewControllerAvailableActionsMailLink)
-            [pageActionSheet addButtonWithTitle:NSLocalizedString(@"Mail Link to this Page", @"")];
+            [pageActionSheet addButtonWithTitle:NSLocalizedStringFromTable(@"Mail Link to this Page", @"SVWebViewController", @"")];
         
-        [pageActionSheet addButtonWithTitle:NSLocalizedString(@"Cancel", @"")];
+        [pageActionSheet addButtonWithTitle:NSLocalizedStringFromTable(@"Cancel", @"SVWebViewController", @"")];
         pageActionSheet.cancelButtonIndex = [self.pageActionSheet numberOfButtons]-1;
     }
     
@@ -124,38 +128,23 @@
     
     if(self = [super init]) {
         self.URL = pageURL;
-        self.availableActions = SVWebViewControllerAvailableActionsOpenInSafari | SVWebViewControllerAvailableActionsMailLink;
+        self.availableActions = SVWebViewControllerAvailableActionsOpenInSafari | SVWebViewControllerAvailableActionsOpenInChrome | SVWebViewControllerAvailableActionsMailLink;
     }
     
     return self;
 }
 
-#pragma mark - Memory management
-
-- (void)dealloc {
-    mainWebView.delegate = nil;
-    [mainWebView release];
-    
-    [URL release];
-    [backBarButtonItem release];
-    [forwardBarButtonItem release];
-    [refreshBarButtonItem release];
-    [stopBarButtonItem release];
-    [actionBarButtonItem release];
-    
-    [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
-    
-    [super dealloc];
+- (void)loadURL:(NSURL *)pageURL {
+    [mainWebView loadRequest:[NSURLRequest requestWithURL:pageURL]];
 }
 
 #pragma mark - View lifecycle
 
 - (void)loadView {
-    
     mainWebView = [[UIWebView alloc] initWithFrame:[UIScreen mainScreen].bounds];
     mainWebView.delegate = self;
     mainWebView.scalesPageToFit = YES;
-    [mainWebView loadRequest:[NSURLRequest requestWithURL:self.URL]];
+    [self loadURL:self.URL];
     self.view = mainWebView;
 }
 
@@ -166,15 +155,13 @@
 
 - (void)viewDidUnload {
     [super viewDidUnload];
-    
-    [mainWebView release], mainWebView = nil;
-    
-    [backBarButtonItem release], backBarButtonItem = nil;
-    [forwardBarButtonItem release], forwardBarButtonItem = nil;
-    [refreshBarButtonItem release], refreshBarButtonItem = nil;
-    [stopBarButtonItem release], stopBarButtonItem = nil;
-    [actionBarButtonItem release], actionBarButtonItem = nil;
-    [pageActionSheet release], pageActionSheet = nil;
+    mainWebView = nil;
+    backBarButtonItem = nil;
+    forwardBarButtonItem = nil;
+    refreshBarButtonItem = nil;
+    stopBarButtonItem = nil;
+    actionBarButtonItem = nil;
+    pageActionSheet = nil;
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -195,12 +182,24 @@
     }
 }
 
+- (void)viewDidDisappear:(BOOL)animated {
+    [super viewDidDisappear:animated];
+    [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
+}
+
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation {
     
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad)
         return YES;
     
     return toInterfaceOrientation != UIInterfaceOrientationPortraitUpsideDown;
+}
+
+- (void)dealloc
+{
+    [mainWebView stopLoading];
+ 	[[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
+    mainWebView.delegate = nil;
 }
 
 #pragma mark - Toolbar
@@ -212,9 +211,9 @@
     
     UIBarButtonItem *refreshStopBarButtonItem = self.mainWebView.isLoading ? self.stopBarButtonItem : self.refreshBarButtonItem;
     
-    UIBarButtonItem *fixedSpace = [[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFixedSpace target:nil action:nil] autorelease];
+    UIBarButtonItem *fixedSpace = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFixedSpace target:nil action:nil];
     fixedSpace.width = 5.0f;
-    UIBarButtonItem *flexibleSpace = [[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil] autorelease];
+    UIBarButtonItem *flexibleSpace = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
     
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
         NSArray *items;
@@ -245,9 +244,11 @@
                      nil];
         }
         
-        UIToolbar *toolbar = [[[UIToolbar alloc] initWithFrame:CGRectMake(0.0f, 0.0f, toolbarWidth, 44.0f)] autorelease];
+        UIToolbar *toolbar = [[UIToolbar alloc] initWithFrame:CGRectMake(0.0f, 0.0f, toolbarWidth, 44.0f)];
         toolbar.items = items;
-        self.navigationItem.rightBarButtonItem = [[[UIBarButtonItem alloc] initWithCustomView:toolbar] autorelease];
+				toolbar.barStyle = self.navigationController.navigationBar.barStyle;
+        toolbar.tintColor = self.navigationController.navigationBar.tintColor;
+        self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:toolbar];
     } 
     
     else {
@@ -277,6 +278,8 @@
                      nil];
         }
         
+				self.navigationController.toolbar.barStyle = self.navigationController.navigationBar.barStyle;
+				self.navigationController.toolbar.tintColor = self.navigationController.navigationBar.tintColor;
         self.toolbarItems = items;
     }
 }
@@ -318,8 +321,6 @@
 
 - (void)stopClicked:(UIBarButtonItem *)sender {
     [mainWebView stopLoading];
-    
-    [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
 	[self updateToolbarItems];
 }
 
@@ -333,11 +334,14 @@
     else
         [self.pageActionSheet showFromToolbar:self.navigationController.toolbar];
     
-    [pageActionSheet release];
 }
 
 - (void)doneButtonClicked:(id)sender {
+#if __IPHONE_OS_VERSION_MIN_REQUIRED < 60000
     [self dismissModalViewControllerAnimated:YES];
+#else
+    [self dismissViewControllerAnimated:YES completion:NULL];
+#endif
 }
 
 #pragma mark -
@@ -346,24 +350,52 @@
 - (void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex {
 	NSString *title = [actionSheet buttonTitleAtIndex:buttonIndex];
     
-	if([title isEqualToString:NSLocalizedString(@"Open in Safari", @"")])
+	if([title localizedCompare:NSLocalizedStringFromTable(@"Open in Safari", @"SVWebViewController", @"")] == NSOrderedSame)
         [[UIApplication sharedApplication] openURL:self.mainWebView.request.URL];
     
-    if([title isEqualToString:NSLocalizedString(@"Copy Link", @"")]) {
+    if([title localizedCompare:NSLocalizedStringFromTable(@"Open in Chrome", @"SVWebViewController", @"")] == NSOrderedSame) {
+        NSURL *inputURL = self.mainWebView.request.URL;
+        NSString *scheme = inputURL.scheme;
+        
+        NSString *chromeScheme = nil;
+        if ([scheme isEqualToString:@"http"]) {
+            chromeScheme = @"googlechrome";
+        } else if ([scheme isEqualToString:@"https"]) {
+            chromeScheme = @"googlechromes";
+        }
+        
+        if (chromeScheme) {
+            NSString *absoluteString = [inputURL absoluteString];
+            NSRange rangeForScheme = [absoluteString rangeOfString:@":"];
+            NSString *urlNoScheme =
+            [absoluteString substringFromIndex:rangeForScheme.location];
+            NSString *chromeURLString =
+            [chromeScheme stringByAppendingString:urlNoScheme];
+            NSURL *chromeURL = [NSURL URLWithString:chromeURLString];
+            
+            [[UIApplication sharedApplication] openURL:chromeURL];
+        }
+    }
+    
+    if([title localizedCompare:NSLocalizedStringFromTable(@"Copy Link", @"SVWebViewController", @"")] == NSOrderedSame) {
         UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
         pasteboard.string = self.mainWebView.request.URL.absoluteString;
     }
     
-    else if([title isEqualToString:NSLocalizedString(@"Mail Link to this Page", @"")]) {
+    else if([title localizedCompare:NSLocalizedStringFromTable(@"Mail Link to this Page", @"SVWebViewController", @"")] == NSOrderedSame) {
         
-		MFMailComposeViewController *mailViewController = [[[MFMailComposeViewController alloc] init] autorelease];
+		MFMailComposeViewController *mailViewController = [[MFMailComposeViewController alloc] init];
         
 		mailViewController.mailComposeDelegate = self;
         [mailViewController setSubject:[self.mainWebView stringByEvaluatingJavaScriptFromString:@"document.title"]];
   		[mailViewController setMessageBody:self.mainWebView.request.URL.absoluteString isHTML:NO];
 		mailViewController.modalPresentationStyle = UIModalPresentationFormSheet;
         
+#if __IPHONE_OS_VERSION_MIN_REQUIRED < 60000
 		[self presentModalViewController:mailViewController animated:YES];
+#else
+        [self presentViewController:mailViewController animated:YES completion:NULL];
+#endif
 	}
     
     pageActionSheet = nil;
@@ -372,11 +404,16 @@
 #pragma mark -
 #pragma mark MFMailComposeViewControllerDelegate
 
-- (void)mailComposeController:(MFMailComposeViewController *)controller 
-          didFinishWithResult:(MFMailComposeResult)result 
-                        error:(NSError *)error 
+- (void)mailComposeController:(MFMailComposeViewController *)controller
+          didFinishWithResult:(MFMailComposeResult)result
+                        error:(NSError *)error
 {
+    
+#if __IPHONE_OS_VERSION_MIN_REQUIRED < 60000
 	[self dismissModalViewControllerAnimated:YES];
+#else
+    [self dismissViewControllerAnimated:YES completion:NULL];
+#endif
 }
 
 @end

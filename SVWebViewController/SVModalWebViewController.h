@@ -12,9 +12,12 @@ enum {
     SVWebViewControllerAvailableActionsNone             = 0,
     SVWebViewControllerAvailableActionsOpenInSafari     = 1 << 0,
     SVWebViewControllerAvailableActionsMailLink         = 1 << 1,
-    SVWebViewControllerAvailableActionsCopyLink         = 1 << 2
+    SVWebViewControllerAvailableActionsCopyLink         = 1 << 2,
+    SVWebViewControllerAvailableActionsOpenInChrome     = 1 << 3
 };
+
 typedef NSUInteger SVWebViewControllerAvailableActions;
+
 
 @class SVWebViewController;
 
@@ -23,7 +26,7 @@ typedef NSUInteger SVWebViewControllerAvailableActions;
 - (id)initWithAddress:(NSString*)urlString;
 - (id)initWithURL:(NSURL *)URL;
 
-@property (nonatomic, retain) UIColor *barsTintColor;
-@property (nonatomic, assign) SVWebViewControllerAvailableActions availableActions;
+@property (nonatomic, strong) UIColor *barsTintColor;
+@property (nonatomic, readwrite) SVWebViewControllerAvailableActions availableActions;
 
 @end
